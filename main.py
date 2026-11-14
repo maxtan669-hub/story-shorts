@@ -11,9 +11,16 @@ import requests
 
 LANG = os.environ.get("LANGUAGE", "hindi").lower()
 VOICE = "hi-IN-SwaraNeural" if LANG == "hindi" else "en-US-AriaNeural"
-MODEL = os.environ.get("GEMINI_MODEL", "gemini-flash-latest")
 DRY_RUN = os.environ.get("DRY_RUN", "1") == "1"
 OUT = "out"
+
+MODELS = [
+    os.environ.get("GEMINI_MODEL", ""),
+    "gemini-flash-latest",
+    "gemini-3-flash-preview",
+    "gemini-3.1-flash-lite",
+    "gemini-2.5-flash",
+]
 
 THEMES = [
     "a clever animal outwits a bigger enemy",
@@ -42,27 +49,37 @@ Return ONLY JSON in this shape:
   "tags": ["5 short tags"],
   "scenes": [{{"text": "narration in {lang_name}",
               "image_prompt": "vivid English description of the scene, illustration, no text in image"}}]}}"""
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL}:generateContent"
     body = {
         "contents": [{"parts": [{"text": prompt}]}],
         "generationConfig": {"responseMimeType": "application/json"},
     }
-    for attempt in range(3):
-        try:
-            r = requests.post(
-                url,
-                params={"key": os.environ["GEMINI_API_KEY"]},
-                json=body,
-                timeout=120,
-            )
-            r.raise_for_status()
-            text = r.json()["candidates"][0]["content"]["parts"][0]["text"]
-            story = json.loads(text)
-            if len(story["scenes"]) >= 3:
-                return story
-        except Exception as e:
-            print("Gemini retry:", e)
-            time.sleep(15)
+    key = os.environ["GEMINI_API_KEY"]
+    for model in [m for m in MODELS if m]:
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+        for attempt in range(2):
+            try:
+                r = requests.post(url, params={"key": key}, json=body, timeout=120)
+                if r.status_code == 404:
+                    print("Model not found, trying next:", model)
+                    break
+                r.raise_for_status()
+                text = r.json()["candidates"][0]["content"]["parts"][0]["text"]
+                story = json.loads(text)
+                if len(story["scenes"]) >= 3:
+                    print("Used model:", model)
+                    return story
+            except Exception as e:
+                print("Gemini retry:", model, e)
+                time.sleep(10)
+    try:
+        r = requests.get(
+            "https://generativelanguage.googleapis.com/v1beta/models",
+            params={"key": key}, timeout=60,
+        )
+        names = [m["name"] for m in r.json().get("models", [])]
+        print("Available models:", names)
+    except Exception as e:
+        print("Could not list models:", e)
     raise RuntimeError("Story generation failed")
 
 
