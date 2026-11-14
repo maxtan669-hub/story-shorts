@@ -11,7 +11,7 @@ import requests
 
 LANG = os.environ.get("LANGUAGE", "hindi").lower()
 VOICE = "hi-IN-SwaraNeural" if LANG == "hindi" else "en-US-AriaNeural"
-MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
+MODEL = os.environ.get("GEMINI_MODEL", "gemini-flash-latest")
 DRY_RUN = os.environ.get("DRY_RUN", "1") == "1"
 OUT = "out"
 
