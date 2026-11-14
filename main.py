@@ -17,8 +17,6 @@ OUT = "out"
 MODELS = [
     os.environ.get("GEMINI_MODEL", ""),
     "gemini-flash-latest",
-    "gemini-3-flash-preview",
-    "gemini-3.1-flash-lite",
 ]
 
 THEMES = [
